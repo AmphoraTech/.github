@@ -180,28 +180,30 @@ install_extensions() {
     echo ""
 }
 
-# Function to fix the local settings file first
+# Function to fix the local settings file with MERGING
 fix_local_eslint_config() {
     local settings_file="$1"
     local eslint_config_path="$2"
 
     if [ ! -f "$settings_file" ]; then
         echo "Creating new settings file: $settings_file"
+        mkdir -p "$(dirname "$settings_file")"
         echo "{}" > "$settings_file"
     fi
 
-    echo -e "${BLUE}Fixing ESLint config path in local settings: $settings_file${NC}"
+    echo -e "${BLUE}Merging ESLint config path into local settings: $settings_file${NC}"
 
     local tmp
     tmp="$(mktemp)"
 
-    # Only update the overrideConfigFile property, preserve everything else
+    # MERGE the eslint options, preserving existing settings
     jq --arg config_path "$eslint_config_path" '
-        .["eslint.options"] = (.["eslint.options"] // {}) | .["eslint.options"]["overrideConfigFile"] = $config_path
+        .["eslint.options"] = (.["eslint.options"] // {}) |
+        .["eslint.options"]["overrideConfigFile"] = $config_path
     ' "$settings_file" > "$tmp"
 
     mv "$tmp" "$settings_file"
-    echo "Added correct ESLint path to $settings_file"
+    echo "✅ Merged ESLint path into $settings_file"
 }
 
 fix_local_python_flake8_config() {
@@ -210,19 +212,22 @@ fix_local_python_flake8_config() {
 
     if [ ! -f "$settings_file" ]; then
         echo "Creating new settings file: $settings_file"
+        mkdir -p "$(dirname "$settings_file")"
         echo "{}" > "$settings_file"
     fi
+
+    echo -e "${BLUE}Merging Python flake8 config into local settings: $settings_file${NC}"
 
     local tmp
     tmp="$(mktemp)"
 
-    # Only update the overrideConfigFile property, preserve everything else
+    # MERGE flake8Args, preserving existing settings
     jq --arg config_path "$python_flake8_config_path" '
-        .["python.linting.flake8Args"] = (.["python.linting.flake8Args"] // []) | .["python.linting.flake8Args"] = $config_path
+        .["python.linting.flake8Args"] = ["--config", $config_path]
     ' "$settings_file" > "$tmp"
 
     mv "$tmp" "$settings_file"
-    echo "Added Python flake8 path to $settings_file"
+    echo "✅ Merged Python flake8 path into $settings_file"
 }
 
 fix_local_python_toml_config() {
@@ -231,19 +236,23 @@ fix_local_python_toml_config() {
 
     if [ ! -f "$settings_file" ]; then
         echo "Creating new settings file: $settings_file"
+        mkdir -p "$(dirname "$settings_file")"
         echo "{}" > "$settings_file"
     fi
+
+    echo -e "${BLUE}Merging Python toml config into local settings: $settings_file${NC}"
 
     local tmp
     tmp="$(mktemp)"
 
-    # Only update the overrideConfigFile property, preserve everything else
+    # MERGE Python toml settings, preserving existing settings
     jq --arg config_path "$python_toml_config_path" '
-        .["python.formatting.blackArgs"] = (.["python.formatting.blackArgs"] // []) | .["python.formatting.blackArgs"] = $config_path | .["python.sortImports.args"] = (.["python.sortImports.args"] // []) | .["python.sortImports.args"] = $config_path
+        .["python.formatting.blackArgs"] = ["--config", $config_path] |
+        .["python.sortImports.args"] = ["--settings-path", $config_path]
     ' "$settings_file" > "$tmp"
 
     mv "$tmp" "$settings_file"
-    echo "Added correct Python toml path to $settings_file"
+    echo "✅ Merged Python toml path into $settings_file"
 }
 
 # Function to create or ensure extensions.json exists
@@ -274,104 +283,144 @@ EOF
 
 # ---- Detect OS paths ----
 detect_os() {
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    HOME_DIR="$HOME"
-    VSCODE_USER_DIR="$HOME_DIR/Library/Application Support/Code/User"
-    CURSOR_USER_DIR="$HOME_DIR/Library/Application Support/Cursor/User"
-  elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    HOME_DIR="$HOME"
-    VSCODE_USER_DIR="$HOME_DIR/.config/Code/User"
-    CURSOR_USER_DIR="$HOME_DIR/.config/Cursor/User"
-  elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
-    HOME_DIR="$USERPROFILE"
-    VSCODE_USER_DIR="$HOME_DIR/AppData/Roaming/Code/User"
-    CURSOR_USER_DIR="$HOME_DIR/AppData/Roaming/Cursor/User"
-  else
-    echo "Unsupported OSTYPE: $OSTYPE" >&2
-    exit 1
-  fi
+   if [[ "$OSTYPE" == "darwin"* ]]; then
+      HOME_DIR="$HOME"
+      DESKTOP_PATH="$HOME_DIR/Desktop"
+      VSCODE_USER_DIR="$HOME_DIR/Library/Application Support/Code/User"
+      CURSOR_USER_DIR="$HOME_DIR/Library/Application Support/Cursor/User"
+   elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+      HOME_DIR="$HOME"
+      DESKTOP_PATH="$HOME_DIR/Desktop"
+      VSCODE_USER_DIR="$HOME_DIR/.config/Code/User"
+      CURSOR_USER_DIR="$HOME_DIR/.config/Cursor/User"
+   elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
+      HOME_DIR="$USERPROFILE"
+      DESKTOP_PATH="$HOME_DIR/Desktop"
+      VSCODE_USER_DIR="$HOME_DIR/AppData/Roaming/Code/User"
+      CURSOR_USER_DIR="$HOME_DIR/AppData/Roaming/Cursor/User"
+   else
+      echo "Unsupported OSTYPE: $OSTYPE" >&2
+      exit 1
+   fi
 }
 
-get_standards_dir() {
-  ROOT_STANDARDS_DIR="$HOME_DIR/amphora-logistics-code-standards"
-  ESLINT_STANDARDS_DIR="$ROOT_STANDARDS_DIR/configs/eslint"
-  PYTHON_STANDARDS_DIR="$ROOT_STANDARDS_DIR/configs/python"
-}
+# Parse command line arguments
+parse_arguments() {
+    GLOBAL_FLAG=false
 
-get_source_settings() {
-  SOURCE_SETTINGS="$ROOT_STANDARDS_DIR/.vscode/settings.json"
-}
-
-get_source_extensions() {
-  SOURCE_EXTENSIONS="$ROOT_STANDARDS_DIR/.vscode/extensions.json"
-}
-
-get_eslint_config_path() {
-  ESLINT_CONFIG_PATH="$ESLINT_STANDARDS_DIR/eslint.config.js"
-}
-
-get_python_toml_config_path() {
-  PYTHON_TOML_CONFIG_PATH="$PYTHON_STANDARDS_DIR/pyproject.toml"
-}
-
-get_python_flake8_config_path() {
-  PYTHON_FLAKE8_CONFIG_PATH="$PYTHON_STANDARDS_DIR/.flake8"
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --global)
+                GLOBAL_FLAG=true
+                shift
+                ;;
+            *)
+                echo "Unknown option: $1"
+                echo "Usage: $0 [--global]"
+                echo "  --global  Copy/merge settings to VSCode/Cursor global directories"
+                exit 1
+                ;;
+        esac
+    done
 }
 
 get_current_dir() {
   CURRENT_DIR="$(pwd)"
+  # Extract the folder name dynamically
+  FOLDER_NAME="$(basename "$CURRENT_DIR")"
+  echo "Current directory: $CURRENT_DIR"
+  echo "Folder name: $FOLDER_NAME"
 }
 
-move_standards_dir() {
-  # Check if we're already in the home directory location
-  if [ "$CURRENT_DIR" != "$ROOT_STANDARDS_DIR" ]; then
-      echo "Moving logistics-code-standards to user home directory..."
+# FIXED: Copy entire folder to desktop (preserving original)
+copy_standards_dir_to_desktop() {
+   # Set the target path on desktop using dynamic folder name
+   ROOT_STANDARDS_DIR="$DESKTOP_PATH/$FOLDER_NAME"
 
-      # If target exists, remove it first
-      if [ -d "$ROOT_STANDARDS_DIR" ]; then
-          rm -rf "$ROOT_STANDARDS_DIR"
-      fi
+   echo "Target desktop path: $ROOT_STANDARDS_DIR"
 
-      # Move (not copy) current directory to home
-      mv "$CURRENT_DIR" "$ROOT_STANDARDS_DIR"
-      cd "$ROOT_STANDARDS_DIR"
-
-      echo "Moved to: $ROOT_STANDARDS_DIR"
-  else
+   # Check if we're already on the desktop
+   if [ "$CURRENT_DIR" = "$ROOT_STANDARDS_DIR" ]; then
       echo "Already in correct location: $ROOT_STANDARDS_DIR"
-  fi
+      return 0
+   fi
+
+   echo "Copying $FOLDER_NAME to desktop..."
+
+   # If target exists on desktop, remove it first
+   if [ -d "$ROOT_STANDARDS_DIR" ]; then
+       echo "Removing existing $FOLDER_NAME from desktop..."
+       rm -rf "$ROOT_STANDARDS_DIR"
+   fi
+
+   # Copy entire current directory to desktop
+   echo "Copying from: $CURRENT_DIR"
+   echo "Copying to: $ROOT_STANDARDS_DIR"
+
+   cp -r "$CURRENT_DIR" "$ROOT_STANDARDS_DIR"
+   cd "$ROOT_STANDARDS_DIR"
+
+   echo "✅ Copied to desktop: $ROOT_STANDARDS_DIR"
+
+   # Update CURRENT_DIR to reflect new location
+   CURRENT_DIR="$ROOT_STANDARDS_DIR"
+}
+
+# FIXED: Set up directory paths after move
+setup_directory_paths() {
+   ESLINT_STANDARDS_DIR="$ROOT_STANDARDS_DIR/configs/eslint"
+   PYTHON_STANDARDS_DIR="$ROOT_STANDARDS_DIR/configs/python"
+   SOURCE_SETTINGS="$ROOT_STANDARDS_DIR/repos/.vscode/settings.json"
+   SOURCE_EXTENSIONS="$ROOT_STANDARDS_DIR/repos/.vscode/extensions.json"
+   ESLINT_CONFIG_PATH="$ESLINT_STANDARDS_DIR/eslint.config.js"
+   PYTHON_TOML_CONFIG_PATH="$PYTHON_STANDARDS_DIR/pyproject.toml"
+   PYTHON_FLAKE8_CONFIG_PATH="$PYTHON_STANDARDS_DIR/.flake8"
 }
 
 install_eslint_dependencies() {
-  # go to to eslint config and install dependencies
-  cd "$ESLINT_STANDARDS_DIR"
-  echo "Installing ESLint dependencies in $(dirname "$ESLINT_STANDARDS_DIR")" # eslint directory
-  npm install
-  cd "$ROOT_STANDARDS_DIR" #back to the standards directory
+  # go to eslint config and install dependencies
+  if [ -d "$ESLINT_STANDARDS_DIR" ]; then
+    cd "$ESLINT_STANDARDS_DIR"
+    echo "Installing ESLint dependencies in $ESLINT_STANDARDS_DIR"
+    npm install
+    cd "$ROOT_STANDARDS_DIR" #back to the standards directory
+  else
+    echo "⚠️ ESLint directory not found: $ESLINT_STANDARDS_DIR"
+  fi
 }
 
 install_python_dependencies() {
-  # go to to python config and install dependencies
-  cd "$PYTHON_STANDARDS_DIR"
-  echo "Installing Python dependencies in $(dirname "$PYTHON_STANDARDS_DIR")" # python directory
-  pip install -r requirements-linting.txt
-  cd "$ROOT_STANDARDS_DIR" #back to the standards directory
+  # go to python config and install dependencies
+  if [ -d "$PYTHON_STANDARDS_DIR" ]; then
+    cd "$PYTHON_STANDARDS_DIR"
+    echo "Installing Python dependencies in $PYTHON_STANDARDS_DIR"
+    pip install -r requirements-linting.txt
+    cd "$ROOT_STANDARDS_DIR" #back to the standards directory
+  else
+    echo "⚠️ Python directory not found: $PYTHON_STANDARDS_DIR"
+  fi
 }
 
 main() {
     echo -e "${BLUE}🚀 Setting up Global Linters and Formatters Configuration${NC}"
     echo ""
 
+    # Parse command line arguments first
+    parse_arguments "$@"
+
     detect_os
-    get_standards_dir
-    get_source_settings
-    get_source_extensions
-    get_eslint_config_path
-    get_python_toml_config_path
-    get_python_flake8_config_path
     get_current_dir
-    move_standards_dir
+
+    # Copy to desktop first
+    copy_standards_dir_to_desktop
+
+    # Set up all paths after move
+    setup_directory_paths
+
+    # Create necessary directories and files
     ensure_extensions_json  # Make sure extensions.json exists
+
+    # Install dependencies
     install_eslint_dependencies
     # install_python_dependencies # WHEN PYTHON IS READY - ETTORE
 
@@ -382,51 +431,69 @@ main() {
     echo -e "ESLint config path: ${BLUE}$ESLINT_CONFIG_PATH${NC}"
     echo -e "Python toml config path: ${BLUE}$PYTHON_TOML_CONFIG_PATH${NC}"
     echo -e "Python flake8 config path: ${BLUE}$PYTHON_FLAKE8_CONFIG_PATH${NC}"
-    echo -e "VSCode user directory: ${BLUE}$VSCODE_USER_DIR${NC}"
-    echo -e "Cursor user directory: ${BLUE}$CURSOR_USER_DIR${NC}"
+
+    if [ "$GLOBAL_FLAG" = true ]; then
+        echo -e "VSCode user directory: ${BLUE}$VSCODE_USER_DIR${NC}"
+        echo -e "Cursor user directory: ${BLUE}$CURSOR_USER_DIR${NC}"
+    fi
     echo ""
 
-    # Setup VSCode
-    if [ -d "$VSCODE_USER_DIR" ]; then
-      echo -e "${GREEN}VSCode exists in the home directory${NC}"
-      fix_local_eslint_config "$SOURCE_SETTINGS" "$ESLINT_CONFIG_PATH"
-      fix_local_python_flake8_config "$SOURCE_SETTINGS" "$PYTHON_FLAKE8_CONFIG_PATH"
-      fix_local_python_toml_config "$SOURCE_SETTINGS" "$PYTHON_TOML_CONFIG_PATH"
-      setup_global_ide_settings "VSCode" "$VSCODE_USER_DIR"  # Fixed function name
-      merge_settings "$VSCODE_USER_DIR/settings.json" "$SOURCE_SETTINGS"
-      merge_extensions "$VSCODE_USER_DIR/extensions.json" "$SOURCE_EXTENSIONS"
+    # ALWAYS configure local settings in repos/.vscode/settings.json
+    echo -e "${BLUE}Configuring local settings in $SOURCE_SETTINGS${NC}"
+    fix_local_eslint_config "$SOURCE_SETTINGS" "$ESLINT_CONFIG_PATH"
+    fix_local_python_flake8_config "$SOURCE_SETTINGS" "$PYTHON_FLAKE8_CONFIG_PATH"
+    fix_local_python_toml_config "$SOURCE_SETTINGS" "$PYTHON_TOML_CONFIG_PATH"
+    echo -e "${GREEN}✅ Local settings configured${NC}"
 
-      # Install extensions automatically
-      install_extensions "code" "VSCode" "$SOURCE_EXTENSIONS"
+    # ONLY setup global IDE settings if --global flag is present
+    if [ "$GLOBAL_FLAG" = true ]; then
+        echo ""
+        echo -e "${YELLOW}Global flag detected - setting up VSCode/Cursor global settings${NC}"
+
+        # Setup VSCode
+        if [ -d "$VSCODE_USER_DIR" ]; then
+          echo -e "${GREEN}VSCode exists in the home directory${NC}"
+          setup_global_ide_settings "VSCode" "$VSCODE_USER_DIR"
+          merge_settings "$VSCODE_USER_DIR/settings.json" "$SOURCE_SETTINGS"
+          merge_extensions "$VSCODE_USER_DIR/extensions.json" "$SOURCE_EXTENSIONS"
+
+          # Install extensions automatically
+          install_extensions "code" "VSCode" "$SOURCE_EXTENSIONS"
+        else
+          echo -e "${YELLOW}VSCode does not exist in the home directory${NC}"
+        fi
+
+        # Setup Cursor
+        if [ -d "$CURSOR_USER_DIR" ]; then
+          echo -e "${GREEN}Cursor exists in the home directory${NC}"
+          setup_global_ide_settings "Cursor" "$CURSOR_USER_DIR"
+          merge_settings "$CURSOR_USER_DIR/settings.json" "$SOURCE_SETTINGS"
+          merge_extensions "$CURSOR_USER_DIR/extensions.json" "$SOURCE_EXTENSIONS"
+
+          # Install extensions automatically
+          install_extensions "cursor" "Cursor" "$SOURCE_EXTENSIONS"
+        else
+          echo -e "${YELLOW}Cursor does not exist in the home directory${NC}"
+        fi
     else
-      echo -e "${YELLOW}VSCode does not exist in the home directory${NC}"
-    fi
-
-    # Setup Cursor
-    if [ -d "$CURSOR_USER_DIR" ]; then
-      echo -e "${GREEN}Cursor exists in the home directory${NC}"
-      fix_local_eslint_config "$SOURCE_SETTINGS" "$ESLINT_CONFIG_PATH"
-      fix_local_python_flake8_config "$SOURCE_SETTINGS" "$PYTHON_FLAKE8_CONFIG_PATH"
-      fix_local_python_toml_config "$SOURCE_SETTINGS" "$PYTHON_TOML_CONFIG_PATH"
-      setup_global_ide_settings "Cursor" "$CURSOR_USER_DIR"
-      merge_settings "$CURSOR_USER_DIR/settings.json" "$SOURCE_SETTINGS"
-      merge_extensions "$CURSOR_USER_DIR/extensions.json" "$SOURCE_EXTENSIONS"
-
-      # Install extensions automatically
-      install_extensions "cursor" "Cursor" "$SOURCE_EXTENSIONS"
-    else
-      echo -e "${YELLOW}Cursor does not exist in the home directory${NC}"
+        echo -e "${BLUE}Local setup only (use --global flag to setup VSCode/Cursor global settings)${NC}"
     fi
 
     echo ""
-    echo -e "${GREEN}✅ Global ESLint setup complete!${NC}"
+    echo -e "${GREEN}✅ Setup complete!${NC}"
     echo ""
     echo -e "${YELLOW}Next steps:${NC}"
-    echo "1. Restart VSCode/Cursor to load new settings and extensions"
-    echo "2. Extensions should now be installed automatically"
+    if [ "$GLOBAL_FLAG" = true ]; then
+        echo "1. Restart VSCode/Cursor to load new global settings and extensions"
+        echo "2. Extensions should now be installed automatically"
+    else
+        echo "1. Open VSCode/Cursor in this project directory"
+        echo "2. Local settings will be applied automatically"
+    fi
     echo "3. Test with: npm run lint"
     echo ""
-    echo -e "${BLUE}Global ESLINT configuration location:${NC} $ROOT_STANDARDS_DIR/configs/eslint/eslint.config.js"
+    echo -e "${BLUE}Local settings configured in:${NC} $SOURCE_SETTINGS"
+    echo -e "${BLUE}Global ESLINT configuration:${NC} $ROOT_STANDARDS_DIR/configs/eslint/eslint.config.js"
     echo -e "${BLUE}Global PYTHON configuration:${NC} $ROOT_STANDARDS_DIR/configs/python/pyproject.toml"
     echo -e "${BLUE}Global PYTHON flake8 configuration:${NC} $ROOT_STANDARDS_DIR/configs/python/.flake8"
 }
