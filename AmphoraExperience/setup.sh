@@ -180,7 +180,7 @@ install_extensions() {
     echo ""
 }
 
-# Function to fix the local settings file with MERGING
+# Function to MERGE settings without overwriting existing ones
 fix_local_eslint_config() {
     local settings_file="$1"
     local eslint_config_path="$2"
@@ -191,19 +191,26 @@ fix_local_eslint_config() {
         echo "{}" > "$settings_file"
     fi
 
-    echo -e "${BLUE}Merging ESLint config path into local settings: $settings_file${NC}"
+    echo -e "${BLUE}Merging ESLint config path into existing settings: $settings_file${NC}"
 
     local tmp
     tmp="$(mktemp)"
 
-    # MERGE the eslint options, preserving existing settings
+    # PROPERLY merge - preserve ALL existing properties and only add/update eslint.options
     jq --arg config_path "$eslint_config_path" '
-        .["eslint.options"] = (.["eslint.options"] // {}) |
-        .["eslint.options"]["overrideConfigFile"] = $config_path
+        # Preserve the entire object and only modify eslint.options
+        . as $original |
+        $original |
+        .["eslint.options"] = ((.["eslint.options"] // {}) + {"overrideConfigFile": $config_path})
     ' "$settings_file" > "$tmp"
 
-    mv "$tmp" "$settings_file"
-    echo "✅ Merged ESLint path into $settings_file"
+    if [ $? -eq 0 ]; then
+        mv "$tmp" "$settings_file"
+        echo "✅ Successfully merged ESLint config into $settings_file"
+    else
+        rm "$tmp"
+        echo "❌ Failed to merge ESLint config"
+    fi
 }
 
 fix_local_python_flake8_config() {
@@ -216,18 +223,26 @@ fix_local_python_flake8_config() {
         echo "{}" > "$settings_file"
     fi
 
-    echo -e "${BLUE}Merging Python flake8 config into local settings: $settings_file${NC}"
+    echo -e "${BLUE}Merging Python flake8 config into existing settings: $settings_file${NC}"
 
     local tmp
     tmp="$(mktemp)"
 
-    # MERGE flake8Args, preserving existing settings
+    # PROPERLY merge - preserve ALL existing properties and only add/update python.linting.flake8Args
     jq --arg config_path "$python_flake8_config_path" '
+        # Preserve the entire object and only modify python.linting.flake8Args
+        . as $original |
+        $original |
         .["python.linting.flake8Args"] = ["--config", $config_path]
     ' "$settings_file" > "$tmp"
 
-    mv "$tmp" "$settings_file"
-    echo "✅ Merged Python flake8 path into $settings_file"
+    if [ $? -eq 0 ]; then
+        mv "$tmp" "$settings_file"
+        echo "✅ Successfully merged Python flake8 config into $settings_file"
+    else
+        rm "$tmp"
+        echo "❌ Failed to merge Python flake8 config"
+    fi
 }
 
 fix_local_python_toml_config() {
@@ -240,19 +255,27 @@ fix_local_python_toml_config() {
         echo "{}" > "$settings_file"
     fi
 
-    echo -e "${BLUE}Merging Python toml config into local settings: $settings_file${NC}"
+    echo -e "${BLUE}Merging Python toml config into existing settings: $settings_file${NC}"
 
     local tmp
     tmp="$(mktemp)"
 
-    # MERGE Python toml settings, preserving existing settings
+    # PROPERLY merge - preserve ALL existing properties and only add/update python formatting settings
     jq --arg config_path "$python_toml_config_path" '
+        # Preserve the entire object and only modify the specific python settings
+        . as $original |
+        $original |
         .["python.formatting.blackArgs"] = ["--config", $config_path] |
         .["python.sortImports.args"] = ["--settings-path", $config_path]
     ' "$settings_file" > "$tmp"
 
-    mv "$tmp" "$settings_file"
-    echo "✅ Merged Python toml path into $settings_file"
+    if [ $? -eq 0 ]; then
+        mv "$tmp" "$settings_file"
+        echo "✅ Successfully merged Python toml config into $settings_file"
+    else
+        rm "$tmp"
+        echo "❌ Failed to merge Python toml config"
+    fi
 }
 
 # Function to create or ensure extensions.json exists
@@ -326,78 +349,158 @@ parse_arguments() {
 
 get_current_dir() {
   CURRENT_DIR="$(pwd)"
-  # Extract the folder name dynamically
   FOLDER_NAME="$(basename "$CURRENT_DIR")"
   echo "Current directory: $CURRENT_DIR"
-  echo "Folder name: $FOLDER_NAME"
+  echo "Current folder name: $FOLDER_NAME"
 }
 
-# FIXED: Copy entire folder to desktop (preserving original)
-copy_standards_dir_to_desktop() {
-   # Set the target path on desktop using dynamic folder name
-   ROOT_STANDARDS_DIR="$DESKTOP_PATH/$FOLDER_NAME"
+# FIXED: Detect script location and find target folder (looking for repos and configs OR code-standards)
+detect_target_folder() {
+  # Case 1: Script is inside the target folder (e.g., AmphoraExperience/setup.sh)
+  if [ -d "$CURRENT_DIR/repos" ] && ([ -d "$CURRENT_DIR/configs" ] || [ -d "$CURRENT_DIR/code-standards" ]); then
+    echo "✅ Script is inside target folder: $FOLDER_NAME"
+    TARGET_FOLDER_PATH="$CURRENT_DIR"
+    TARGET_FOLDER_NAME="$FOLDER_NAME"
+    return 0
+  fi
 
+  # Case 2: Script at root level, need to find the target folder
+  echo "🔍 Script at root level, searching for target folder..."
+
+  # Look for folders that contain 'repos' and either 'configs' or 'code-standards' subdirectories
+  for dir in "$CURRENT_DIR"/*/ ; do
+    if [ -d "$dir" ]; then
+      dir_name=$(basename "$dir")
+      if [ -d "$dir/repos" ] && ([ -d "$dir/configs" ] || [ -d "$dir/code-standards" ]); then
+        echo "✅ Found target folder: $dir_name"
+        TARGET_FOLDER_PATH="$dir"
+        TARGET_FOLDER_NAME="$dir_name"
+        return 0
+      fi
+    fi
+  done
+
+  # If we get here, no target folder was found
+  echo "❌ No target folder found with both 'repos' and ('configs' or 'code-standards') directories"
+  echo "Expected structure:"
+  echo "  - repos/"
+  echo "  - configs/ OR code-standards/"
+  exit 1
+}
+
+# Copy the target folder to desktop
+copy_standards_dir_to_desktop() {
+   # Set the target path on desktop
+   ROOT_STANDARDS_DIR="$DESKTOP_PATH/$TARGET_FOLDER_NAME"
+
+   echo "Target folder path: $TARGET_FOLDER_PATH"
+   echo "Target folder name: $TARGET_FOLDER_NAME"
    echo "Target desktop path: $ROOT_STANDARDS_DIR"
 
-   # Check if we're already on the desktop
-   if [ "$CURRENT_DIR" = "$ROOT_STANDARDS_DIR" ]; then
+   # Check if target folder is already on desktop
+   if [ "$TARGET_FOLDER_PATH" = "$ROOT_STANDARDS_DIR" ]; then
       echo "Already in correct location: $ROOT_STANDARDS_DIR"
       return 0
    fi
 
-   echo "Copying $FOLDER_NAME to desktop..."
+   echo "Copying $TARGET_FOLDER_NAME to desktop..."
 
    # If target exists on desktop, remove it first
    if [ -d "$ROOT_STANDARDS_DIR" ]; then
-       echo "Removing existing $FOLDER_NAME from desktop..."
+       echo "Removing existing $TARGET_FOLDER_NAME from desktop..."
        rm -rf "$ROOT_STANDARDS_DIR"
    fi
 
-   # Copy entire current directory to desktop
-   echo "Copying from: $CURRENT_DIR"
+   # Copy the target folder to desktop
+   echo "Copying from: $TARGET_FOLDER_PATH"
    echo "Copying to: $ROOT_STANDARDS_DIR"
 
-   cp -r "$CURRENT_DIR" "$ROOT_STANDARDS_DIR"
+   cp -r "$TARGET_FOLDER_PATH" "$ROOT_STANDARDS_DIR"
    cd "$ROOT_STANDARDS_DIR"
 
    echo "✅ Copied to desktop: $ROOT_STANDARDS_DIR"
 
-   # Update CURRENT_DIR to reflect new location
+   # Update paths to reflect new location
    CURRENT_DIR="$ROOT_STANDARDS_DIR"
+   TARGET_FOLDER_PATH="$ROOT_STANDARDS_DIR"
 }
 
-# FIXED: Set up directory paths after move
+# FIXED: Set up directory paths with correct nested structure
 setup_directory_paths() {
-   ESLINT_STANDARDS_DIR="$ROOT_STANDARDS_DIR/configs/eslint"
-   PYTHON_STANDARDS_DIR="$ROOT_STANDARDS_DIR/configs/python"
+   echo "🔍 Detecting directory structure..."
+   echo "Available directories:"
+   ls -la "$ROOT_STANDARDS_DIR" | grep "^d"
+
+   # PRIORITY 1: Check if code-standards/configs/eslint exists (actual structure)
+   if [ -d "$ROOT_STANDARDS_DIR/code-standards/configs" ] && [ -d "$ROOT_STANDARDS_DIR/code-standards/configs/eslint" ]; then
+     echo "✅ Using nested 'code-standards/configs' directory structure"
+     ESLINT_STANDARDS_DIR="$ROOT_STANDARDS_DIR/code-standards/configs/eslint"
+     PYTHON_STANDARDS_DIR="$ROOT_STANDARDS_DIR/code-standards/configs/python"
+   # PRIORITY 2: Check if configs/eslint exists (flat structure)
+   elif [ -d "$ROOT_STANDARDS_DIR/configs" ] && [ -d "$ROOT_STANDARDS_DIR/configs/eslint" ]; then
+     echo "✅ Using flat 'configs' directory structure"
+     ESLINT_STANDARDS_DIR="$ROOT_STANDARDS_DIR/configs/eslint"
+     PYTHON_STANDARDS_DIR="$ROOT_STANDARDS_DIR/configs/python"
+   # PRIORITY 3: Check if code-standards/eslint exists (direct structure)
+   elif [ -d "$ROOT_STANDARDS_DIR/code-standards" ] && [ -d "$ROOT_STANDARDS_DIR/code-standards/eslint" ]; then
+     echo "✅ Using direct 'code-standards/eslint' directory structure"
+     ESLINT_STANDARDS_DIR="$ROOT_STANDARDS_DIR/code-standards/eslint"
+     PYTHON_STANDARDS_DIR="$ROOT_STANDARDS_DIR/code-standards/python"
+   # FALLBACK 1: Just code-standards/configs directory exists
+   elif [ -d "$ROOT_STANDARDS_DIR/code-standards/configs" ]; then
+     echo "⚠️ Using 'code-standards/configs' directory structure (fallback)"
+     ESLINT_STANDARDS_DIR="$ROOT_STANDARDS_DIR/code-standards/configs/eslint"
+     PYTHON_STANDARDS_DIR="$ROOT_STANDARDS_DIR/code-standards/configs/python"
+   # FALLBACK 2: Just configs directory exists
+   elif [ -d "$ROOT_STANDARDS_DIR/configs" ]; then
+     echo "⚠️ Using 'configs' directory structure (fallback)"
+     ESLINT_STANDARDS_DIR="$ROOT_STANDARDS_DIR/configs/eslint"
+     PYTHON_STANDARDS_DIR="$ROOT_STANDARDS_DIR/configs/python"
+   # FALLBACK 3: Just code-standards directory exists
+   elif [ -d "$ROOT_STANDARDS_DIR/code-standards" ]; then
+     echo "⚠️ Using 'code-standards' directory structure (fallback)"
+     ESLINT_STANDARDS_DIR="$ROOT_STANDARDS_DIR/code-standards/eslint"
+     PYTHON_STANDARDS_DIR="$ROOT_STANDARDS_DIR/code-standards/python"
+   else
+     echo "❌ No valid directory structure found"
+     exit 1
+   fi
+
    SOURCE_SETTINGS="$ROOT_STANDARDS_DIR/repos/.vscode/settings.json"
    SOURCE_EXTENSIONS="$ROOT_STANDARDS_DIR/repos/.vscode/extensions.json"
    ESLINT_CONFIG_PATH="$ESLINT_STANDARDS_DIR/eslint.config.js"
    PYTHON_TOML_CONFIG_PATH="$PYTHON_STANDARDS_DIR/pyproject.toml"
    PYTHON_FLAKE8_CONFIG_PATH="$PYTHON_STANDARDS_DIR/.flake8"
+
+   echo "📂 Final paths:"
+   echo "   ESLint directory: $ESLINT_STANDARDS_DIR"
+   echo "   Python directory: $PYTHON_STANDARDS_DIR"
 }
 
 install_eslint_dependencies() {
-  # go to eslint config and install dependencies
+  # Make sure we're in the right directory first
   if [ -d "$ESLINT_STANDARDS_DIR" ]; then
-    cd "$ESLINT_STANDARDS_DIR"
     echo "Installing ESLint dependencies in $ESLINT_STANDARDS_DIR"
-    npm install
-    cd "$ROOT_STANDARDS_DIR" #back to the standards directory
-  else
-    echo "⚠️ ESLint directory not found: $ESLINT_STANDARDS_DIR"
-  fi
-}
+    cd "$ESLINT_STANDARDS_DIR"
 
-install_python_dependencies() {
-  # go to python config and install dependencies
-  if [ -d "$PYTHON_STANDARDS_DIR" ]; then
-    cd "$PYTHON_STANDARDS_DIR"
-    echo "Installing Python dependencies in $PYTHON_STANDARDS_DIR"
-    pip install -r requirements-linting.txt
-    cd "$ROOT_STANDARDS_DIR" #back to the standards directory
+    # Check if package.json exists
+    if [ -f "package.json" ]; then
+      echo "Found package.json, running npm install..."
+      npm install
+      echo "✅ ESLint dependencies installed successfully"
+    else
+      echo "⚠️ No package.json found in $ESLINT_STANDARDS_DIR"
+      echo "Available files:"
+      ls -la
+    fi
+
+    # Return to root standards directory
+    cd "$ROOT_STANDARDS_DIR"
   else
-    echo "⚠️ Python directory not found: $PYTHON_STANDARDS_DIR"
+    echo "❌ ESLint directory not found: $ESLINT_STANDARDS_DIR"
+    echo "Let's debug what's available:"
+    echo "Contents of $ROOT_STANDARDS_DIR:"
+    find "$ROOT_STANDARDS_DIR" -type d -name "*eslint*" -o -name "*config*" | head -20
   fi
 }
 
@@ -411,10 +514,13 @@ main() {
     detect_os
     get_current_dir
 
-    # Copy to desktop first
+    # Detect where the script is running and find the target folder
+    detect_target_folder
+
+    # Copy target folder to desktop
     copy_standards_dir_to_desktop
 
-    # Set up all paths after move
+    # Set up all paths after copy (using ROOT_STANDARDS_DIR)
     setup_directory_paths
 
     # Create necessary directories and files
@@ -482,20 +588,33 @@ main() {
     echo ""
     echo -e "${GREEN}✅ Setup complete!${NC}"
     echo ""
+    echo -e "${YELLOW}What was done:${NC}"
+    echo "1. Copied $TARGET_FOLDER_NAME to desktop: $ROOT_STANDARDS_DIR"
+    echo "2. Configured local settings in: $SOURCE_SETTINGS"
+    if [ "$GLOBAL_FLAG" = true ]; then
+        echo "3. Updated global VSCode/Cursor settings and extensions"
+    fi
+    echo ""
     echo -e "${YELLOW}Next steps:${NC}"
     if [ "$GLOBAL_FLAG" = true ]; then
         echo "1. Restart VSCode/Cursor to load new global settings and extensions"
         echo "2. Extensions should now be installed automatically"
     else
-        echo "1. Open VSCode/Cursor in this project directory"
+        echo "1. Open VSCode/Cursor in the desktop project directory"
         echo "2. Local settings will be applied automatically"
     fi
     echo "3. Test with: npm run lint"
     echo ""
     echo -e "${BLUE}Local settings configured in:${NC} $SOURCE_SETTINGS"
-    echo -e "${BLUE}Global ESLINT configuration:${NC} $ROOT_STANDARDS_DIR/configs/eslint/eslint.config.js"
-    echo -e "${BLUE}Global PYTHON configuration:${NC} $ROOT_STANDARDS_DIR/configs/python/pyproject.toml"
-    echo -e "${BLUE}Global PYTHON flake8 configuration:${NC} $ROOT_STANDARDS_DIR/configs/python/.flake8"
+    if [[ "$ESLINT_STANDARDS_DIR" == *"/configs/"* ]]; then
+        echo -e "${BLUE}Global ESLINT configuration:${NC} $ESLINT_STANDARDS_DIR/eslint.config.js"
+        echo -e "${BLUE}Global PYTHON configuration:${NC} $PYTHON_STANDARDS_DIR/pyproject.toml"
+        echo -e "${BLUE}Global PYTHON flake8 configuration:${NC} $PYTHON_STANDARDS_DIR/.flake8"
+    else
+        echo -e "${BLUE}Global ESLINT configuration:${NC} $ESLINT_STANDARDS_DIR/eslint.config.js"
+        echo -e "${BLUE}Global PYTHON configuration:${NC} $PYTHON_STANDARDS_DIR/pyproject.toml"
+        echo -e "${BLUE}Global PYTHON flake8 configuration:${NC} $PYTHON_STANDARDS_DIR/.flake8"
+    fi
 }
 
 # Initialize script
