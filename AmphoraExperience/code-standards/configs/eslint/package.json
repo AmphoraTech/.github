@@ -9,6 +9,7 @@
       "eslint-plugin-react-native": "^4.1.0",
       "eslint-plugin-vue": "^9.25.0",
       "prettier": "^3.0.0",
+      "vue": "^3.4.0",
       "vue-eslint-parser": "^9.4.0"
    },
    "name": "logistics-code-standards",

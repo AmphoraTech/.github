@@ -13,8 +13,23 @@ import commonConfig from './eslint.common.js';
 // Auto-detect project type
 const detectProjectType = () => {
    try {
-      const packagePath = path.join(process.cwd(), 'package.json');
-      if (!fs.existsSync(packagePath)) return 'javascript';
+      // Look for package.json in current directory and parent directories
+      let packagePath = path.join(process.cwd(), 'package.json');
+      let currentDir = process.cwd();
+
+      // Check up to 3 parent directories for package.json
+      for (let i = 0; i < 3; i++) {
+         if (fs.existsSync(packagePath)) break;
+         currentDir = path.dirname(currentDir);
+         packagePath = path.join(currentDir, 'package.json');
+      }
+
+      if (!fs.existsSync(packagePath)) {
+         // If no package.json found, check for Vue files in current directory
+         const vueFiles = fs.readdirSync(process.cwd()).filter(file => file.endsWith('.vue'));
+         if (vueFiles.length > 0) return 'vue';
+         return 'javascript';
+      }
 
       const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
       const deps = {
@@ -25,10 +40,21 @@ const detectProjectType = () => {
       if (deps['react-native']) return 'react-native';
       if (deps['vue']) return 'vue';
       if (deps['react']) return 'react';
-      if (deps['typescript'] || fs.existsSync(path.join(process.cwd(), 'tsconfig.json'))) return 'typescript';
+      if (deps['typescript'] || fs.existsSync(path.join(currentDir, 'tsconfig.json'))) return 'typescript';
+
+      // Check for Vue files in current directory as fallback
+      const vueFiles = fs.readdirSync(process.cwd()).filter(file => file.endsWith('.vue'));
+      if (vueFiles.length > 0) return 'vue';
 
       return 'javascript';
    } catch {
+      // Check for Vue files in current directory as fallback
+      try {
+         const vueFiles = fs.readdirSync(process.cwd()).filter(file => file.endsWith('.vue'));
+         if (vueFiles.length > 0) return 'vue';
+      } catch {
+         // Ignore errors
+      }
       return 'javascript';
    }
 };
@@ -177,25 +203,22 @@ if (projectType === 'vue') {
    });
 }
 
-// Add TypeScript specific rules (extends the universal config above)
-if (projectType === 'typescript') {
-   config.push({
-      files: ['**/*.ts', '**/*.tsx'],
-      plugins: { '@typescript-eslint': typescriptPlugin },
-      languageOptions: {
-         parser: typescriptParser,
-         parserOptions: {
-            ecmaFeatures: { jsx: true },
-            jsx: true
-         }
-      },
-      rules: {
-         ...typescriptPlugin.configs.recommended.rules,
-
-         '@typescript-eslint/no-explicit-any': 'warn',
-         '@typescript-eslint/explicit-function-return-type': 'off'
+config.push({
+   files: ['**/*.ts', '**/*.tsx'],
+   plugins: { '@typescript-eslint': typescriptPlugin },
+   languageOptions: {
+      parser: typescriptParser,
+      parserOptions: {
+         ecmaFeatures: { jsx: true },
+         jsx: true
       }
-   });
-}
+   },
+   rules: {
+      ...typescriptPlugin.configs.recommended.rules,
+      '@typescript-eslint/explicit-function-return-type': 'error',
+      '@typescript-eslint/explicit-module-boundary-types': 'error',
+      '@typescript-eslint/no-explicit-any': 'warn'
+   }
+});
 
 export default config;

@@ -19,7 +19,10 @@ export default [
    },
    {
       files: ['**/*.js', '**/*.mjs', '**/*.cjs', '**/*.jsx', '**/*.ts', '**/*.tsx'],
-      plugins: { '@typescript-eslint': typescriptPlugin, 'import': importPlugin },
+      plugins: {
+         '@typescript-eslint': typescriptPlugin,
+         'import': importPlugin
+      },
       languageOptions: {
          ecmaVersion: 2022,
          sourceType: 'module',
@@ -51,16 +54,16 @@ export default [
          'object-curly-newline': ['error', {
             ObjectExpression: {
                multiline: true,
-               minProperties: 3
+               minProperties: 7
             },
             ObjectPattern: { multiline: true },
             ImportDeclaration: {
                multiline: true,
-               minProperties: 3
+               minProperties: 7
             },
             ExportDeclaration: {
                multiline: true,
-               minProperties: 3
+               minProperties: 7
             }
          }],
          'comma-style': ['error', 'last'],
@@ -104,6 +107,7 @@ export default [
                next: 'return'
             }
          ],
+         'no-var': 'error',
          'prefer-const': ['error', {
             destructuring: 'any',
             ignoreReadBeforeAssign: false
