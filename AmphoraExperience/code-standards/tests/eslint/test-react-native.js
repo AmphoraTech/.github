@@ -1,8 +1,6 @@
 // React Native test file
 import React, { useState } from 'react';
-import {
-   Alert, StyleSheet, Text, TouchableOpacity, View
-} from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const TestReactNative = () => {
    const [count, setCount] = useState(0);
