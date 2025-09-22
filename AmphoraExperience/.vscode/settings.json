@@ -149,12 +149,21 @@
    "python.linting.lintOnSave": true,
    "python.linting.flake8Enabled": true,
    "eslint.options": {
-      "overrideConfigFile": "../code-standards/configs/eslint/eslint.config.js"
+      "overrideConfigFile": "./code-standards/configs/eslint/eslint.config.js"
    },
-   "python.linting.flake8Args": "../code-standards/configs/python/.flake8",
+   "python.linting.flake8Args": [
+      "--config",
+      "./code-standards/configs/python/.flake8"
+   ],
    "python.formatting.provider": "black",
-   "python.formatting.blackArgs": "../code-standards/configs/python/pyproject.toml",
-   "python.sortImports.args": "../code-standards/configs/python/pyproject.toml",
+   "python.formatting.blackArgs": [
+      "--config",
+      "./code-standards/configs/python/pyproject.toml"
+   ],
+   "python.sortImports.args": [
+      "--settings-path",
+      "./code-standards/configs/python/pyproject.toml"
+   ],
    "[python]": {
       "editor.formatOnSave": true,
       "editor.codeActionsOnSave": {

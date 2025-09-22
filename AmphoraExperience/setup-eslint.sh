@@ -544,49 +544,8 @@ main() {
     fi
     echo ""
 
-    # ALWAYS configure local settings in repos/.vscode/settings.json
-    echo -e "${BLUE}Configuring local settings in $SOURCE_SETTINGS${NC}"
-    fix_local_eslint_config "$SOURCE_SETTINGS" "$ESLINT_CONFIG_PATH"
-    fix_local_python_flake8_config "$SOURCE_SETTINGS" "$PYTHON_FLAKE8_CONFIG_PATH"
-    fix_local_python_toml_config "$SOURCE_SETTINGS" "$PYTHON_TOML_CONFIG_PATH"
-    echo -e "${GREEN}✅ Local settings configured${NC}"
-
-    # ONLY setup global IDE settings if --global flag is present
-    if [ "$GLOBAL_FLAG" = true ]; then
-        echo ""
-        echo -e "${YELLOW}Global flag detected - setting up VSCode/Cursor global settings${NC}"
-
-        # Setup VSCode
-        if [ -d "$VSCODE_USER_DIR" ]; then
-          echo -e "${GREEN}VSCode exists in the home directory${NC}"
-          setup_global_ide_settings "VSCode" "$VSCODE_USER_DIR"
-          merge_settings "$VSCODE_USER_DIR/settings.json" "$SOURCE_SETTINGS"
-          merge_extensions "$VSCODE_USER_DIR/extensions.json" "$SOURCE_EXTENSIONS"
-
-          # Install extensions automatically
-          install_extensions "code" "VSCode" "$SOURCE_EXTENSIONS"
-        else
-          echo -e "${YELLOW}VSCode does not exist in the home directory${NC}"
-        fi
-
-        # Setup Cursor
-        if [ -d "$CURSOR_USER_DIR" ]; then
-          echo -e "${GREEN}Cursor exists in the home directory${NC}"
-          setup_global_ide_settings "Cursor" "$CURSOR_USER_DIR"
-          merge_settings "$CURSOR_USER_DIR/settings.json" "$SOURCE_SETTINGS"
-          merge_extensions "$CURSOR_USER_DIR/extensions.json" "$SOURCE_EXTENSIONS"
-
-          # Install extensions automatically
-          install_extensions "cursor" "Cursor" "$SOURCE_EXTENSIONS"
-        else
-          echo -e "${YELLOW}Cursor does not exist in the home directory${NC}"
-        fi
-    else
-        echo -e "${BLUE}Local setup only (use --global flag to setup VSCode/Cursor global settings)${NC}"
-    fi
-
     echo ""
-    echo -e "${GREEN}✅ Setup complete!${NC}"
+    echo -e "${GREEN}✅ Setup complete! Restart your editor to load new settings!${NC}"
     echo ""
     echo -e "${YELLOW}What was done:${NC}"
     echo "1. Copied $TARGET_FOLDER_NAME to desktop: $ROOT_STANDARDS_DIR"
