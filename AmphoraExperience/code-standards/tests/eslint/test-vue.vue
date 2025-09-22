@@ -5,7 +5,7 @@
      <button @click="increment">
        Increment
      </button>
-     <button @click="decrement" :disabled="count <= 0">
+     <button :disabled="count <= 0" @click="decrement">
        Decrement
      </button>
      <ul>

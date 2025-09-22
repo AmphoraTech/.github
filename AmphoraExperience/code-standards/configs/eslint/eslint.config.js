@@ -101,6 +101,7 @@ config.push({
 
 // Add React Native specific rules (extends the universal config above)
 if (projectType === 'react-native') {
+   console.log('React Native project detected');
    config.push({
       files: ['**/*.jsx', '**/*.tsx'],
       plugins: {
@@ -144,6 +145,7 @@ if (projectType === 'react-native') {
 
 // Add React Web specific rules (extends the universal config above)
 if (projectType === 'react') {
+   console.log('React project detected');
    config.push({
       files: ['**/*.jsx', '**/*.tsx'],
       plugins: {
@@ -176,6 +178,7 @@ if (projectType === 'react') {
 
 // Add Vue specific rules
 if (projectType === 'vue') {
+   console.log('Vue project detected');
    config.push({
       files: ['**/*.vue'],
       plugins: { 'vue': vuePlugin },
@@ -194,8 +197,19 @@ if (projectType === 'vue') {
          'vue/no-v-html': 'warn',
          'vue/require-default-prop': 'off',
          'vue/require-explicit-emits': 'error',
-         'vue/no-unused-vars': 'error',
          'vue/component-name-in-template-casing': ['error', 'PascalCase'],
+
+         // Common rules for Vue files
+         'no-var': 'error',
+         'prefer-const': ['error', {
+            destructuring: 'any',
+            ignoreReadBeforeAssign: false
+         }],
+         'no-unused-vars': ['error', {
+            varsIgnorePattern: '^_',
+            argsIgnorePattern: '^_',
+            ignoreRestSiblings: true
+         }],
 
          // Stricter console for web
          'no-console': 'error'
