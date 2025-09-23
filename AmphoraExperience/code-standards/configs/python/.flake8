@@ -1,0 +1,12 @@
+[flake8]
+max-line-length = 88
+indent-size = 4
+no-unused-imports = true
+unused-variables = true
+space-before-assignment = true
+space-in-parens = true
+space-in-brackets = true
+space-in-braces = true
+space-after-comma = true
+space-after-colon = true
+no-trailing-whitespace = true
