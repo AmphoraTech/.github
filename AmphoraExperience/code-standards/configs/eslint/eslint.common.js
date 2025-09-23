@@ -1,5 +1,6 @@
-import typescriptPlugin from '@typescript-eslint/eslint-plugin';
+// AmphoraExperience/code-standards/configs/eslint/eslint.common.js
 import importPlugin from 'eslint-plugin-import';
+import globals from 'globals';
 
 export default [
    {
@@ -19,30 +20,15 @@ export default [
    },
    {
       files: ['**/*.js', '**/*.mjs', '**/*.cjs', '**/*.jsx', '**/*.ts', '**/*.tsx'],
-      plugins: {
-         '@typescript-eslint': typescriptPlugin,
-         'import': importPlugin
-      },
+      plugins: { 'import': importPlugin },
       languageOptions: {
          ecmaVersion: 2022,
          sourceType: 'module',
          parserOptions: { ecmaFeatures: { jsx: true } },
          globals: {
-            window: 'readonly',
-            document: 'readonly',
-            console: 'readonly',
-            fetch: 'readonly',
-            localStorage: 'readonly',
-            sessionStorage: 'readonly',
-            process: 'readonly',
-            Buffer: 'readonly',
-            __dirname: 'readonly',
-            __filename: 'readonly',
-            module: 'readonly',
-            require: 'readonly',
-            exports: 'readonly',
-            global: 'readonly',
-            __DEV__: 'readonly',
+            ...globals.browser,
+            ...globals.node,
+            // Additional globals not covered by browser/node
             FormData: 'readonly',
             XMLHttpRequest: 'readonly',
             Vue: 'readonly'
@@ -149,11 +135,15 @@ export default [
             array: false
          }],
          'no-unused-vars': ['error', {
+            vars: 'all',
+            args: 'all',
+            caughtErrors: 'all',
             varsIgnorePattern: '^_',
             argsIgnorePattern: '^_',
+            caughtErrorsIgnorePattern: '^_',
             ignoreRestSiblings: true
          }],
-         'camelcase': ['error', {
+         'camelcase': ['warn', {
             allow: [
                'shipping_number',
                'wh_packed',

@@ -1,238 +1,131 @@
-// eslint.config.js - Extends common + adds framework support
-import typescriptPlugin from '@typescript-eslint/eslint-plugin';
-import typescriptParser from '@typescript-eslint/parser';
+// AmphoraExperience/code-standards/configs/eslint/eslint.config.js
+import { fixupPluginRules } from '@eslint/compat';
+import js from '@eslint/js';
+import tsPlugin from '@typescript-eslint/eslint-plugin';
+import tsParser from '@typescript-eslint/parser';
+import importPlugin from 'eslint-plugin-import';
 import reactPlugin from 'eslint-plugin-react';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
 import reactNativePlugin from 'eslint-plugin-react-native';
 import vuePlugin from 'eslint-plugin-vue';
-import fs from 'fs';
-import path from 'path';
 import vueParser from 'vue-eslint-parser';
 import commonConfig from './eslint.common.js';
 
-// Auto-detect project type
-const detectProjectType = () => {
-   try {
-      // Look for package.json in current directory and parent directories
-      let packagePath = path.join(process.cwd(), 'package.json');
-      let currentDir = process.cwd();
+export default [
+   // Base JavaScript recommended rules
+   js.configs.recommended,
 
-      // Check up to 3 parent directories for package.json
-      for (let i = 0; i < 3; i++) {
-         if (fs.existsSync(packagePath)) break;
-         currentDir = path.dirname(currentDir);
-         packagePath = path.join(currentDir, 'package.json');
-      }
+   // Common custom rules
+   ...commonConfig,
 
-      if (!fs.existsSync(packagePath)) {
-         // If no package.json found, check for Vue files in current directory
-         const vueFiles = fs.readdirSync(process.cwd()).filter(file => file.endsWith('.vue'));
-         if (vueFiles.length > 0) return 'vue';
-         return 'javascript';
-      }
-
-      const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
-      const deps = {
-         ...pkg.dependencies,
-         ...pkg.devDependencies
-      };
-
-      if (deps['react-native']) return 'react-native';
-      if (deps['vue']) return 'vue';
-      if (deps['react']) return 'react';
-      if (deps['typescript'] || fs.existsSync(path.join(currentDir, 'tsconfig.json'))) return 'typescript';
-
-      // Check for Vue files in current directory as fallback
-      const vueFiles = fs.readdirSync(process.cwd()).filter(file => file.endsWith('.vue'));
-      if (vueFiles.length > 0) return 'vue';
-
-      return 'javascript';
-   } catch {
-      // Check for Vue files in current directory as fallback
-      try {
-         const vueFiles = fs.readdirSync(process.cwd()).filter(file => file.endsWith('.vue'));
-         if (vueFiles.length > 0) return 'vue';
-      } catch {
-         // Ignore errors
-      }
-      return 'javascript';
-   }
-};
-
-const projectType = detectProjectType();
-const config = [...commonConfig];
-
-// UNIVERSAL REACT CONFIGURATION - Apply to ALL JS/TS files that might contain JSX
-config.push({
-   files: ['**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx'],
-   plugins: {
-      'react': reactPlugin,
-      'react-hooks': reactHooksPlugin,
-      '@typescript-eslint': typescriptPlugin // Add the TypeScript plugin here
-   },
-   languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: 'module',
-      parser: typescriptParser, // Use TS parser for better compatibility
-      parserOptions: {
-         ecmaFeatures: { jsx: true },
-         jsx: true,
-         project: false // Don't require tsconfig for basic JSX parsing
-      }
-   },
-   rules: {
-      // Essential React JSX rules
-      'react/jsx-uses-vars': 'error', // This marks JSX components as "used"
-      'react/jsx-uses-react': 'off', // Not needed in modern React
-      'react/react-in-jsx-scope': 'off', // Not needed in modern React
-
-      // Turn off conflicting unused vars rules
-      'no-unused-vars': 'off',
-      '@typescript-eslint/no-unused-vars': ['error', {
-         varsIgnorePattern: '^_',
-         argsIgnorePattern: '^_',
-         ignoreRestSiblings: true,
-         vars: 'all',
-         args: 'after-used'
-      }]
-   },
-   settings: { react: { version: 'detect' } }
-});
-
-// Add React Native specific rules (extends the universal config above)
-if (projectType === 'react-native') {
-   console.log('React Native project detected');
-   config.push({
-      files: ['**/*.jsx', '**/*.tsx'],
-      plugins: {
-         'react': reactPlugin,
-         'react-hooks': reactHooksPlugin,
-         'react-native': reactNativePlugin
-      },
+   // TypeScript files
+   {
+      files: ['**/*.ts', '**/*.tsx'],
+      plugins: { '@typescript-eslint': tsPlugin },
       languageOptions: {
-         ecmaVersion: 2022,
-         sourceType: 'module',
-         parser: typescriptParser,
+         parser: tsParser,
          parserOptions: {
-            ecmaFeatures: { jsx: true },
-            jsx: true
+            ecmaVersion: 'latest',
+            sourceType: 'module'
          },
          globals: {
             __DEV__: 'readonly',
+            fetch: 'readonly',
             navigator: 'readonly'
          }
       },
       rules: {
-         ...reactPlugin.configs.recommended.rules,
-         ...reactHooksPlugin.configs.recommended.rules,
-
-         // React Native specific
-         'react-native/no-unused-styles': 'error',
-         'react-native/no-inline-styles': 'warn',
-         'react-native/no-color-literals': 'warn',
-         'react-native/no-raw-text': 'error',
-
-         // React rules
-         'react/prop-types': 'off',
-         'react/jsx-pascal-case': 'error',
-         'react/jsx-no-duplicate-props': 'error',
-
-         // More lenient console for RN debugging
-         'no-console': 'warn'
+         ...tsPlugin.configs.recommended.rules,
+         '@typescript-eslint/explicit-function-return-type': 'error',
+         '@typescript-eslint/explicit-module-boundary-types': 'error',
+         '@typescript-eslint/no-explicit-any': 'warn'
       }
-   });
-}
+   },
 
-// Add React Web specific rules (extends the universal config above)
-if (projectType === 'react') {
-   console.log('React project detected');
-   config.push({
+   // React / React Native files
+   {
       files: ['**/*.jsx', '**/*.tsx'],
       plugins: {
-         'react': reactPlugin,
-         'react-hooks': reactHooksPlugin
+         react: reactPlugin,
+         'react-hooks': fixupPluginRules(reactHooksPlugin),
+         'react-native': fixupPluginRules(reactNativePlugin),
+         '@typescript-eslint': tsPlugin,
+         'import': importPlugin  // Add import plugin for React files too
       },
       languageOptions: {
-         ecmaVersion: 2022,
-         sourceType: 'module',
-         parser: typescriptParser,
+         parser: tsParser, // Needed for TSX
          parserOptions: {
-            ecmaFeatures: { jsx: true },
-            jsx: true
+            ecmaVersion: 'latest',
+            sourceType: 'module',
+            ecmaFeatures: { jsx: true }
+         },
+         globals: {
+            __DEV__: 'readonly',
+            fetch: 'readonly',
+            navigator: 'readonly',
+            ...commonConfig[1].languageOptions.globals  // Include common globals
          }
       },
       rules: {
+      // Include common rules first
+         ...commonConfig[1].rules,
+
+         // React-specific rules
          ...reactPlugin.configs.recommended.rules,
-         ...reactHooksPlugin.configs.recommended.rules,
+         'react/react-in-jsx-scope': 'off', // Modern React doesn't need this
+         'react/prop-types': 'off', // TS handles types
+         'react/jsx-filename-extension': ['error', { extensions: ['.jsx', '.tsx'] }],
 
-         // React rules
-         'react/prop-types': 'off',
-         'react/jsx-pascal-case': 'error',
-         'react/jsx-no-duplicate-props': 'error',
+         // React Hooks
+         'react-hooks/rules-of-hooks': 'error',
+         'react-hooks/exhaustive-deps': 'warn',
 
-         // Stricter console for web
-         'no-console': 'error'
+         // React Native
+         'react-native/no-unused-styles': 'error',
+         'react-native/no-inline-styles': 'warn',
+         'react-native/no-raw-text': 'error',
+         'react-native/split-platform-components': 'warn',
+
+         // Enhanced unused imports handling
+         'no-unused-vars': ['error', {
+            vars: 'all',
+            args: 'after-used',
+            ignoreRestSiblings: true,
+            argsIgnorePattern: '^_',
+            varsIgnorePattern: '^_'
+         }],
+         'import/no-unused-modules': 'warn'
+      },
+      settings: {
+         react: { version: 'detect' },
+         'import/resolver': { node: { extensions: ['.js', '.jsx', '.ts', '.tsx'] } }
       }
-   });
-}
+   },
 
-// Add Vue specific rules
-if (projectType === 'vue') {
-   console.log('Vue project detected');
-   config.push({
+   // Vue files
+   {
       files: ['**/*.vue'],
-      plugins: { 'vue': vuePlugin },
+      plugins: {
+         vue: vuePlugin,
+         'import': importPlugin
+      },
       languageOptions: {
-         parser: vueParser,
+         parser: vueParser, // Required to parse Vue SFCs
          parserOptions: {
-            parser: typescriptParser,
-            extraFileExtensions: ['.vue']
-         }
+            ecmaVersion: 'latest',
+            sourceType: 'module'
+         },
+         // Also copy globals from common config
+         globals: { ...commonConfig[1].languageOptions.globals }
       },
       rules: {
-         ...vuePlugin.configs['vue3-recommended'].rules,
-
-         // Vue specific
+         ...commonConfig[1].rules, // Get the rules from the second object in commonConfig array
+         ...vuePlugin.configs.recommended.rules,
          'vue/multi-word-component-names': 'off',
          'vue/no-v-html': 'warn',
          'vue/require-default-prop': 'off',
          'vue/require-explicit-emits': 'error',
-         'vue/component-name-in-template-casing': ['error', 'PascalCase'],
-
-         // Common rules for Vue files
-         'no-var': 'error',
-         'prefer-const': ['error', {
-            destructuring: 'any',
-            ignoreReadBeforeAssign: false
-         }],
-         'no-unused-vars': ['error', {
-            varsIgnorePattern: '^_',
-            argsIgnorePattern: '^_',
-            ignoreRestSiblings: true
-         }],
-
-         // Stricter console for web
-         'no-console': 'error'
+         'vue/component-name-in-template-casing': ['error', 'PascalCase']
       }
-   });
-}
-
-config.push({
-   files: ['**/*.ts', '**/*.tsx'],
-   plugins: { '@typescript-eslint': typescriptPlugin },
-   languageOptions: {
-      parser: typescriptParser,
-      parserOptions: {
-         ecmaFeatures: { jsx: true },
-         jsx: true
-      }
-   },
-   rules: {
-      ...typescriptPlugin.configs.recommended.rules,
-      '@typescript-eslint/explicit-function-return-type': 'error',
-      '@typescript-eslint/explicit-module-boundary-types': 'error',
-      '@typescript-eslint/no-explicit-any': 'warn'
    }
-});
-
-export default config;
+];

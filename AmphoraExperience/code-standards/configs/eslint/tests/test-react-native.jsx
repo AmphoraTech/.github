@@ -1,6 +1,8 @@
 // React Native test file
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+   Alert, Image, Pressable, StyleSheet, Text, TouchableOpacity, View
+} from 'react-native';
 
 const TestReactNative = () => {
    const [count, setCount] = useState(0);
@@ -11,8 +13,8 @@ const TestReactNative = () => {
    };
 
    // Intentional issues for ESLint
-   const unusedStyle = StyleSheet.create({});  // var + unused variable
-   const anotherUnused = 'test';  // missing semicolon
+   var unused = 'unused';  // var + unused variable
+   const anotherUnused = 'test'  // missing semicolon
 
    return (
       <View style={styles.container}>
@@ -48,6 +50,10 @@ const styles = StyleSheet.create({
       borderRadius: 5
    },
    buttonText: {
+      color: 'white',
+      fontSize: 16
+   },
+   buttonUnused: {
       color: 'white',
       fontSize: 16
    }

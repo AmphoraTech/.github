@@ -1,3 +1,4 @@
+
 // TypeScript test file
 interface User {
    id: number;

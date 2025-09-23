@@ -1,9 +1,30 @@
 {
-   "workbench.startupEditor": "newUntitledFile",
+   // AAXAA settings theme
+   "workbench.colorCustomizations": {
+      "list.activeSelectionBackground": "#095e66",
+      "activityBar.background": "#095e66",
+      "sideBar.background": "#095e661c",
+      "statusBar.background": "#095e66"
+   },
+   "workbench.iconTheme": "material-icon-theme",
+   "workbench.editor.enablePreview": false,
+   // Python settings
+   "python.terminal.activateEnvironment": true,
+   "python.terminal.activateEnvInCurrentTerminal": true,
+   "[python]": {
+      "editor.defaultFormatter": "ms-python.black-formatter"
+   },
+   // Search settings
+   "search.useIgnoreFiles": true,
+   "search.exclude": {
+      "**/node_modules": true,
+      "**/.history": true
+   },
+   // Git settings
+   "git.enableSmartCommit": true,
    "git.autofetch": true,
    "git.confirmSync": false,
    "gitlens.keymap": "chorded",
-   "workbench.editor.enablePreview": false,
    "gitlens.advanced.messages": {
       "suppressCommitHasNoPreviousCommitWarning": false,
       "suppressCommitNotFoundWarning": false,
@@ -12,23 +33,41 @@
       "suppressLineUncommittedWarning": false,
       "suppressNoRepositoryWarning": false
    },
+   // Local history settings
    "local-history.treeLocation": "localHistory",
-   "search.exclude": {
-      "**/node_modules": true,
-      "**/.history": true
-   },
+   // JavaScript/TypeScript settings
    "javascript.updateImportsOnFileMove.enabled": "always",
-   "emmet.triggerExpansionOnTab": true,
+   "typescript.preferences.importModuleSpecifier": "relative",
+   "typescript.updateImportsOnFileMove.enabled": "always",
+   "typescript.preferences.quoteStyle": "single",
+   "typescript.preferences.includePackageJsonAutoImports": "off",
+   // Files settings
    "files.autoSave": "afterDelay",
-   "workbench.colorTheme": "Darcula",
+   "files.insertFinalNewline": true,
+   "files.trimTrailingWhitespace": true,
+   // Editor settings
    "editor.occurrencesHighlight": "off",
    "editor.selectionHighlight": false,
    "editor.renderWhitespace": "all",
    "editor.suggestSelection": "first",
-   "diffEditor.ignoreTrimWhitespace": false,
-   "workbench.iconTheme": "material-icon-theme",
-   "todohighlight.isEnable": false,
-   "files.insertFinalNewline": true,
+   "editor.accessibilitySupport": "off",
+   "editor.stickyScroll.enabled": true,
+   "editor.fontFamily": "'JetBrains Mono', Consolas, 'Courier New', monospace",
+   "editor.fontLigatures": true,
+   "editor.fontSize": 12.5,
+   "editor.foldingImportsByDefault": true,
+   "editor.linkedEditing": true,
+   "editor.largeFileOptimizations": false,
+   "editor.formatOnSave": true,
+   "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.fixAll.eslint": "explicit",
+      "source.organizeImports": "explicit"
+   },
+   "editor.tabSize": 3,
+   "editor.insertSpaces": true,
+   "editor.detectIndentation": false,
+   // Formatter settings
    "[javascript]": {
       "editor.defaultFormatter": "dbaeumer.vscode-eslint"
    },
@@ -41,133 +80,66 @@
    "[javascriptreact]": {
       "editor.defaultFormatter": "dbaeumer.vscode-eslint"
    },
-   "git.enableSmartCommit": true,
+   "[vue]": {
+      "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+   },
    "[json]": {
       "editor.defaultFormatter": "vscode.json-language-features"
    },
    "[jsonc]": {
       "editor.defaultFormatter": "vscode.json-language-features"
    },
-   "typescript.updateImportsOnFileMove.enabled": "always",
-   "typescript.preferences.quoteStyle": "single",
    "[yaml]": {
       "editor.autoIndent": "advanced"
    },
-   "editor.accessibilitySupport": "off",
+   // Terminal settings
    "terminal.integrated.env.osx": {
       "FIG_NEW_SESSION": "1",
       "PYTHONPATH": "${workspaceFolder}"
    },
-   "editor.stickyScroll.enabled": true,
-   "workbench.colorCustomizations": {
-      "editorStickyScroll.background": "#5a4040",
-      "editorStickyScrollHover.background": "#170909"
-   },
-   "eslint.probe": [
-      "javascript",
-      "javascriptreact",
-      "typescript",
-      "typescriptreact",
-      "html",
-      "vue",
-      "markdown",
-      "astro"
-   ],
-   "markdown.extension.toc.updateOnSave": false,
-   "editor.fontFamily": "'JetBrains Mono', Consolas, 'Courier New', monospace",
-   "editor.fontLigatures": true,
-   "editor.fontSize": 12.5,
-   "editor.foldingImportsByDefault": true,
-   "editor.linkedEditing": true,
-   "editor.largeFileOptimizations": false,
    "terminal.integrated.fontFamily": "MesloLGS NF",
    "terminal.integrated.defaultProfile.osx": "zsh",
    "terminal.integrated.scrollback": 100000,
    "terminal.integrated.env.linux": {
       "PYTHONPATH": "${workspaceFolder}"
    },
-   "files.trimTrailingWhitespace": true,
-   "scm.alwaysShowRepositories": true,
-   "explorer.fileNesting.patterns": {
-      "*.ts": "${capture}.js",
-      "*.js": "${capture}.js.map, ${capture}.min.js, ${capture}.d.ts",
-      "*.jsx": "${capture}.js",
-      "*.tsx": "${capture}.ts",
-      "tsconfig.json": "tsconfig.*.json",
-      "package.json": "package-lock.json, yarn.lock, pnpm-lock.yaml, bun.lockb",
-      "*.sqlite": "${capture}.${extname}-*",
-      "*.db": "${capture}.${extname}-*",
-      "*.sqlite3": "${capture}.${extname}-*",
-      "*.db3": "${capture}.${extname}-*",
-      "*.sdb": "${capture}.${extname}-*",
-      "*.s3db": "${capture}.${extname}-*"
+   // ESLint settings
+   "eslint.options": {
+      "overrideConfigFile": "./eslint.config.js"
    },
-   "[markdown]": {
-      "editor.defaultFormatter": "yzhang.markdown-all-in-one"
-   },
+   "eslint.format.enable": true,
    "eslint.useFlatConfig": true,
    "eslint.workingDirectories": [
       {
          "mode": "auto"
       }
    ],
+   "eslint.probe": [
+      "javascript",
+      "javascriptreact",
+      "typescript",
+      "typescriptreact",
+      "vue"
+   ],
    "eslint.validate": [
       "javascript",
       "javascriptreact",
       "typescript",
       "typescriptreact",
-      "vue",
-      "astro"
+      "vue"
    ],
-   "editor.formatOnSave": true,
-   "editor.codeActionsOnSave": {
-      "source.fixAll": "explicit",
-      "source.fixAll.eslint": "explicit",
-      "source.organizeImports": "explicit"
-   },
-   "eslint.format.enable": true,
-   "editor.tabSize": 3,
-   "editor.insertSpaces": true,
-   "editor.detectIndentation": false,
-   "typescript.preferences.importModuleSpecifier": "relative",
-   "files.associations": {
-      "*.tsx": "typescriptreact",
-      "*.css": "postcss",
-      "*.vue": "vue",
-      "pyproject.toml": "toml",
-      ".flake8": "ini"
-   },
+   // Emmet settings
+   "emmet.triggerExpansionOnTab": true,
    "emmet.includeLanguages": {
-      "vue-html": "html",
-      "vue": "html",
       "typescript": "typescriptreact",
-      "javascript": "javascriptreact",
-      "erb": "html",
-      "astro": "html"
+      "javascript": "javascriptreact"
    },
-   "python.linting.enabled": true,
-   "python.linting.lintOnSave": true,
-   "python.linting.flake8Enabled": true,
-   "eslint.options": {
-      "overrideConfigFile": "./code-standards/configs/eslint/eslint.config.js"
+   // Miscellaneous settings
+   "diffEditor.ignoreTrimWhitespace": false,
+   "todohighlight.isEnable": false,
+   // Path intellisense settings
+   "path-intellisense.mappings": {
+      "@": "${workspaceFolder}"
    },
-   "python.linting.flake8Args": [
-      "--config",
-      "./code-standards/configs/python/.flake8"
-   ],
-   "python.formatting.provider": "black",
-   "python.formatting.blackArgs": [
-      "--config",
-      "./code-standards/configs/python/pyproject.toml"
-   ],
-   "python.sortImports.args": [
-      "--settings-path",
-      "./code-standards/configs/python/pyproject.toml"
-   ],
-   "[python]": {
-      "editor.formatOnSave": true,
-      "editor.codeActionsOnSave": {
-         "source.organizeImports": "explicit"
-      }
-   }
+   "path-intellisense.extensionOnImport": true
 }
