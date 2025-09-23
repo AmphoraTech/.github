@@ -90,5 +90,5 @@ package-lock.json
 yarn.lock
 
 # exclude all folders from repos/ but keep files and .vscode
-AmphoraExperience/repos/*/
-!AmphoraExperience/repos/.vscode/
+repos/*/
+!repos/.vscode/
